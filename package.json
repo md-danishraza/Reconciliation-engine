@@ -8,7 +8,8 @@
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "seed": "tsx src/scripts/seedDatabase.ts"
+    "seed": "tsx src/scripts/seedDB.ts",
+    "test-ingestion":"tsx src/scripts/testIngestion.ts"
   },
   "keywords": [],
   "author": "",

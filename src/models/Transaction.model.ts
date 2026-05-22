@@ -4,7 +4,7 @@ export interface ITransaction extends Document {
   source: "user" | "exchange";
   originalRow: Record<string, any>;
   transactionId?: string;
-  timestamp: Date;
+  timestamp: Date | null; // Allow null for invalid timestamps
   asset: string;
   normalizedAsset: string;
   quantity: number;
@@ -16,6 +16,7 @@ export interface ITransaction extends Document {
   dataQualityIssues: string[];
   reconciliationRunId?: string;
   isMatched: boolean;
+  isValid: boolean; // track if transaction is valid for matching
   matchedWith?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -40,7 +41,7 @@ const TransactionSchema = new Schema<ITransaction>(
     },
     timestamp: {
       type: Date,
-      required: true,
+      required: false,
       index: true,
     },
     asset: {
@@ -56,7 +57,7 @@ const TransactionSchema = new Schema<ITransaction>(
       type: Number,
       required: true,
       validate: {
-        validator: (v: number) => v > 0,
+        validator: (v: number) => v >= 0,
         message: "Quantity must be positive",
       },
     },
@@ -81,6 +82,11 @@ const TransactionSchema = new Schema<ITransaction>(
       type: Boolean,
       default: false,
     },
+    isValid: {
+      type: Boolean,
+      default: true,
+      index: true, // Index for filtering valid transactions
+    },
     matchedWith: {
       type: Schema.Types.ObjectId,
       ref: "Transaction",
@@ -91,13 +97,18 @@ const TransactionSchema = new Schema<ITransaction>(
   }
 );
 
-// Compound index for matching queries
-TransactionSchema.index({
-  normalizedAsset: 1,
-  normalizedType: 1,
-  timestamp: 1,
-  quantity: 1,
-});
+// Compound index for matching queries (only for valid transactions)
+TransactionSchema.index(
+  {
+    normalizedAsset: 1,
+    normalizedType: 1,
+    timestamp: 1,
+    quantity: 1,
+  },
+  {
+    partialFilterExpression: { isValid: true, timestamp: { $ne: null } },
+  }
+);
 
 export const Transaction = mongoose.model<ITransaction>(
   "Transaction",
