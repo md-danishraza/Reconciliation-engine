@@ -4,16 +4,16 @@
   "description": "",
   "main": "index.js",
   "type": "module",
-    "scripts": {
-      "start": "node dist/index.js",
-      "dev": "tsx src/index.ts",
-      "build": "tsc",
-      "clean": "rm -rf dist",
-      "prebuild": "npm run clean",
-      "seed": "tsx src/scripts/seedDB.ts",
-      "test-ingestion": "tsx src/scripts/testIngestion.ts",
-      "railway-start": "tsx src/index.ts"
-    },
+  "scripts": {
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "prebuild": "npm run clean",
+    "seed": "tsx src/scripts/seedDB.ts",
+    "test-ingestion": "tsx src/scripts/testIngestion.ts",
+    "railway-start": "node dist/index.js"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -32,27 +32,27 @@
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.0",
     "uuid": "^9.0.1",
-    "zod": "^3.22.4"
+    "zod": "^3.22.4",
+    "typescript": "^5.2.2"
   },
   "devDependencies": {
-    "@types/compression": "^1.7.5",
-    "@types/cors": "^2.8.17",
+    "tsx": "^4.7.0",
+    "dotenv": "^16.3.1",
+    "ts-node": "^10.9.2",
+    "@types/node": "^18.19.0",
     "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17",
+    "@types/compression": "^1.7.5",
     "@types/express-rate-limit": "^6.0.0",
     "@types/hpp": "^0.2.6",
     "@types/json2csv": "^5.0.7",
     "@types/multer": "^1.4.11",
-    "@types/node": "^18.19.0",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.6",
-    "@types/uuid": "^9.0.8",
-    "dotenv": "^16.3.1",
-    "ts-node": "^10.9.2",
-    "tsx": "^4.7.0",
-    "typescript": "^5.2.2"
+    "@types/uuid": "^9.0.8"
   },
   "engines": {
-    "node": ">=18.0.0 <20.0.0",
-    "npm": ">=9.0.0"
+    "node": "18.x",
+    "npm": "9.x"
   }
 }
