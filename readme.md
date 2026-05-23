@@ -1,6 +1,6 @@
 # Transaction Reconciliation Engine
 
-[![Deployed on Railway](https://img.shields.io/badge/Deployed%20on-Railway-0B0D0E?logo=railway&logoColor=white)](https://reconciliation-engine-production-8778.up.railway.app/)
+[![Deployed on Render](https://img.shields.io/badge/Deployed%20on-Render-46E3B7?logo=render&logoColor=white)](https://reconciliation-engine-oxed.onrender.com)
 [![Node Version](https://img.shields.io/badge/Node-18.x-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.2-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?logo=mongodb&logoColor=white)](https://www.mongodb.com/atlas)
@@ -9,10 +9,10 @@ A robust backend service that reconciles transaction data between user-exported 
 
 ## 🚀 Live Demo
 
-**API Base URL:** `https://reconciliation-engine-production-8778.up.railway.app`
+**API Base URL:** `https://reconciliation-engine-oxed.onrender.com`
 
-- 📚 **Swagger Documentation:** [https://reconciliation-engine-production-8778.up.railway.app/docs](https://reconciliation-engine-production-8778.up.railway.app/docs)
-- ✅ **Health Check:** [https://reconciliation-engine-production-8778.up.railway.app/health](https://reconciliation-engine-production-8778.up.railway.app/health)
+- 📚 **Swagger Documentation:** [https://reconciliation-engine-oxed.onrender.com/docs](https://reconciliation-engine-oxed.onrender.com/docs)
+- ✅ **Health Check:** [https://reconciliation-engine-oxed.onrender.com/health](https://reconciliation-engine-oxed.onrender.com/health)
 
 ## 📋 Table of Contents
 
@@ -60,7 +60,7 @@ A robust backend service that reconciles transaction data between user-exported 
 | **Validation**    | Zod 3.22                     |
 | **Documentation** | Swagger UI + OpenAPI 3.0     |
 | **Security**      | Helmet, CORS, Rate Limiting  |
-| **Deployment**    | Railway                      |
+| **Deployment**    | Render                       |
 
 ## 📡 API Endpoints
 
@@ -200,7 +200,7 @@ ReconciliationEngine/
 ### Start Reconciliation
 
 ```bash
-curl -X POST https://reconciliation-engine-production-8778.up.railway.app/api/reconcile \
+curl -X POST https://reconciliation-engine-oxed.onrender.com/api/reconcile \
   -H "Content-Type: application/json" \
   -d '{
     "timestampToleranceSeconds": 300,
@@ -227,7 +227,7 @@ json
 ### Get Summary Report
 
 ```bash
-curl https://reconciliation-engine-production-8778.up.railway.app/api/report/rec_1700000000_abc123/summary
+curl https://reconciliation-engine-oxed.onrender.com/api/report/rec_1700000000_abc123/summary
 
 Response:
 
@@ -248,7 +248,7 @@ json
 ### Export CSV Report
 
 ```bash
-curl https://reconciliation-engine-production-8778.up.railway.app/api/report/rec_1700000000_abc123?format=csv \
+curl https://reconciliation-engine-oxed.onrender.com/api/report/rec_1700000000_abc123?format=csv \
 
   --output report.csv
 ```
@@ -256,7 +256,7 @@ curl https://reconciliation-engine-production-8778.up.railway.app/api/report/rec
 ## Getting Help
 
 - 📚 **Check API docs:** `/docs` endpoint
-- 📊 **Monitor logs:** Railway dashboard
+- 📊 **Monitor logs:** Render dashboard
 - 🐛 **Verify data:** Run `npm run test-ingestion`
 
 ## License
@@ -277,4 +277,4 @@ GitHub: [@md-danishraza](https://github.com/md-danishraza)
 
 ## Live API
 
-[https://reconciliation-engine-production-8778.up.railway.app](https://reconciliation-engine-production-8778.up.railway.app)
+[https://reconciliation-engine-oxed.onrender.com](https://reconciliation-engine-oxed.onrender.com)

@@ -37,7 +37,7 @@ const options: swaggerJsdoc.Options = {
         description: "Development server",
       },
       {
-        url: "https://reconciliation-engine-production-8778.up.railway.app/api",
+        url: "https://reconciliation-engine-oxed.onrender.com/api",
         description: "Production server",
       },
     ],
