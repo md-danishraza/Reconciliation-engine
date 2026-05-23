@@ -1,15 +1,24 @@
 import { Request, Response, NextFunction } from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
-import mongoSanitize from "express-mongo-sanitize";
+
 import hpp from "hpp";
 import compression from "compression";
 import { logger } from "../utils/logger.js";
 
-// Rate limiting - Public API friendly
+// Helper function to get client IP (works with IPv4 and IPv6)
+const getClientIp = (req: Request): string => {
+  const xForwardedFor = req.headers["x-forwarded-for"];
+  if (xForwardedFor && typeof xForwardedFor === "string") {
+    return xForwardedFor.split(",")[0].trim();
+  }
+  return req.ip || req.socket.remoteAddress || "unknown";
+};
+
+// Rate limiting - Fixed IPv6 issue
 export const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200, // Increased to 200 requests per 15 minutes for public API
+  max: 200,
   message: {
     error: "Too many requests",
     message: "Please try again after 15 minutes",
@@ -17,76 +26,66 @@ export const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req: Request) => {
-    // Use IP address for rate limiting
-    return req.ip || (req.headers["x-forwarded-for"] as string) || "unknown";
+    // Use the helper function for proper IP handling
+    return getClientIp(req);
   },
   skip: (req: Request) => {
-    // Skip rate limiting for health check
     return req.path === "/health";
   },
 });
 
-// Stricter rate limit for reconciliation endpoint (expensive operation)
+// Stricter rate limit for reconciliation endpoint
 export const reconciliationLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 20, // 20 reconciliations per hour max
+  max: 20,
   message: {
     error: "Too many reconciliation requests",
     message: "Please wait before starting another reconciliation run",
   },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req: Request) => {
+    return getClientIp(req);
+  },
 });
 
-// Security headers with helmet (relaxed for public API)
+// Security headers with helmet
 export const securityHeaders = helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"], // Needed for Swagger UI
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Needed for Swagger UI
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
       imgSrc: ["'self'", "data:", "https:"],
     },
   },
-  crossOriginEmbedderPolicy: false, // Allow cross-origin for public API
-  crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow cross-origin requests
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" },
 });
 
 // Open CORS for public API
 export const corsOptions = {
-  origin: "*", // Allow all origins
+  origin: "*",
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   exposedHeaders: ["Content-Disposition"],
-  credentials: false, // Set to false when origin is '*'
+  credentials: false,
   optionsSuccessStatus: 200,
   preflightContinue: false,
-  maxAge: 86400, // Cache preflight request for 24 hours
+  maxAge: 86400,
 };
-
-// Prevent MongoDB query injection
-export const sanitizeInput = mongoSanitize({
-  replaceWith: "_",
-  onSanitize: ({ req, key }) => {
-    if (process.env.NODE_ENV === "development") {
-      logger.debug(`Sanitized input field: ${key}`);
-    }
-  },
-});
 
 // Prevent HTTP Parameter Pollution
 export const preventParameterPollution = hpp();
 
 // Compression for faster responses
 export const compress = compression({
-  level: 6, // Balanced compression level
-  threshold: 1024, // Only compress responses > 1KB
+  level: 6,
+  threshold: 1024,
   filter: (req, res) => {
-    // Don't compress event source responses
     if (req.headers["accept"] === "text/event-stream") {
       return false;
     }
-    // Use default compression filter
     return compression.filter(req, res);
   },
 });
@@ -99,33 +98,32 @@ export const requestLogger = (
 ) => {
   const start = Date.now();
 
-  // Log when request completes
   res.on("finish", () => {
     const duration = Date.now() - start;
     const logLevel = res.statusCode >= 400 ? "warn" : "info";
 
     logger[logLevel](
-      `${req.method} ${req.path} - ${res.statusCode} - ${duration}ms - IP: ${req.ip}`
+      `${req.method} ${req.path} - ${
+        res.statusCode
+      } - ${duration}ms - IP: ${getClientIp(req)}`
     );
   });
 
   next();
 };
 
-// Error handling middleware (safe for production)
+// Error handling middleware
 export const errorHandler = (
   err: any,
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  // Log full error for debugging
   logger.error("Error:", {
     message: err.message,
     stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
     path: req.path,
     method: req.method,
-    ip: req.ip,
   });
 
   // Mongoose validation error
@@ -155,7 +153,6 @@ export const errorHandler = (
     });
   }
 
-  // Default error (safe message for production)
   const status = err.status || 500;
   const message =
     process.env.NODE_ENV === "production" && status === 500
@@ -166,15 +163,12 @@ export const errorHandler = (
     error: err.name || "Internal Server Error",
     message,
     timestamp: new Date().toISOString(),
-    ...(process.env.NODE_ENV === "development" && { path: req.path }),
   });
 };
 
 // 404 handler
 export const notFoundHandler = (req: Request, res: Response) => {
-  logger.warn(
-    `404 - Route not found: ${req.method} ${req.path} from IP: ${req.ip}`
-  );
+  logger.warn(`404 - Route not found: ${req.method} ${req.path}`);
   res.status(404).json({
     error: "Not Found",
     message: `Cannot ${req.method} ${req.path}`,
@@ -182,16 +176,14 @@ export const notFoundHandler = (req: Request, res: Response) => {
   });
 };
 
-// Optional: Simple API usage tracking (no auth required)
+// Usage tracker
 export const usageTracker = (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  // Track API usage (can be sent to analytics or just logged)
   if (process.env.NODE_ENV === "production") {
-    // Log in production for monitoring
-    logger.debug(`API Call: ${req.method} ${req.path} - IP: ${req.ip}`);
+    logger.debug(`API Call: ${req.method} ${req.path}`);
   }
   next();
 };

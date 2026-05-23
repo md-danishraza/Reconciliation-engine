@@ -11,7 +11,6 @@ import {
   corsOptions,
   limiter,
   reconciliationLimiter,
-  sanitizeInput,
   preventParameterPollution,
   compress,
   requestLogger,
@@ -30,7 +29,6 @@ app.use(securityHeaders); // Set security headers
 app.use(cors(corsOptions)); // Open CORS for public API
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-app.use(sanitizeInput); // Prevent MongoDB injection
 app.use(preventParameterPollution); // Prevent parameter pollution
 app.use(requestLogger); // Log all requests
 app.use(usageTracker); // Track API usage

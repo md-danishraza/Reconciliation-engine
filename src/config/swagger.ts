@@ -43,6 +43,7 @@ const options: swaggerJsdoc.Options = {
     ],
     components: {
       schemas: {
+        // Request Schemas
         ReconciliationRequest: {
           type: "object",
           properties: {
@@ -70,6 +71,8 @@ const options: swaggerJsdoc.Options = {
             },
           },
         },
+
+        // Response Schemas
         ReconciliationResponse: {
           type: "object",
           properties: {
@@ -90,26 +93,230 @@ const options: swaggerJsdoc.Options = {
             },
           },
         },
+
+        // Summary Response Schema - FIXED
+        SummaryResponse: {
+          type: "object",
+          properties: {
+            runId: { type: "string", example: "rec_1700000000_abc123" },
+            status: {
+              type: "string",
+              enum: ["pending", "running", "completed", "failed"],
+              example: "completed",
+            },
+            startedAt: {
+              type: "string",
+              format: "date-time",
+              example: "2024-01-01T00:00:00Z",
+            },
+            completedAt: {
+              type: "string",
+              format: "date-time",
+              example: "2024-01-01T00:01:00Z",
+            },
+            config: {
+              type: "object",
+              properties: {
+                timestampToleranceSeconds: { type: "number", example: 300 },
+                quantityTolerancePct: { type: "number", example: 0.01 },
+              },
+            },
+            summary: {
+              type: "object",
+              properties: {
+                matched: { type: "number", example: 18 },
+                conflicting: { type: "number", example: 2 },
+                unmatchedUser: { type: "number", example: 3 },
+                unmatchedExchange: { type: "number", example: 2 },
+                totalUserTransactions: { type: "number", example: 25 },
+                totalExchangeTransactions: { type: "number", example: 25 },
+                totalValidUserTransactions: { type: "number", example: 22 },
+                totalValidExchangeTransactions: { type: "number", example: 25 },
+              },
+            },
+          },
+        },
+
+        // Full Report Response Schema
+        ReportResponse: {
+          type: "object",
+          properties: {
+            runId: { type: "string" },
+            summary: { $ref: "#/components/schemas/ReportSummary" },
+            config: { $ref: "#/components/schemas/ReconciliationConfig" },
+            report: {
+              type: "array",
+              items: { $ref: "#/components/schemas/ReportEntry" },
+            },
+          },
+        },
+
+        ReportSummary: {
+          type: "object",
+          properties: {
+            matched: { type: "number" },
+            conflicting: { type: "number" },
+            unmatchedUser: { type: "number" },
+            unmatchedExchange: { type: "number" },
+            totalUserTransactions: { type: "number" },
+            totalExchangeTransactions: { type: "number" },
+          },
+        },
+
+        ReconciliationConfig: {
+          type: "object",
+          properties: {
+            timestampToleranceSeconds: { type: "number" },
+            quantityTolerancePct: { type: "number" },
+            resetPrevious: { type: "boolean" },
+          },
+        },
+
+        ReportEntry: {
+          type: "object",
+          properties: {
+            category: {
+              type: "string",
+              enum: [
+                "matched",
+                "conflicting",
+                "unmatched_user",
+                "unmatched_exchange",
+              ],
+            },
+            reason: { type: "string" },
+            userTransaction: {
+              type: "object",
+              nullable: true,
+            },
+            exchangeTransaction: {
+              type: "object",
+              nullable: true,
+            },
+            matchDetails: {
+              type: "object",
+              properties: {
+                score: { type: "number" },
+                timestampDiff: { type: "number" },
+                quantityDiff: { type: "number" },
+              },
+            },
+          },
+        },
+
+        // Unmatched Response Schema
+        UnmatchedResponse: {
+          type: "object",
+          properties: {
+            runId: { type: "string" },
+            totalUnmatched: { type: "number" },
+            unmatched: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  category: {
+                    type: "string",
+                    enum: ["unmatched_user", "unmatched_exchange"],
+                  },
+                  reason: { type: "string" },
+                  transaction: { type: "object" },
+                  qualityIssues: {
+                    type: "array",
+                    items: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+        },
+
+        // Error Response Schema
         ErrorResponse: {
           type: "object",
           properties: {
-            error: { type: "string" },
-            message: { type: "string" },
+            error: { type: "string", example: "Validation Error" },
+            message: { type: "string", example: "Invalid request parameters" },
             timestamp: { type: "string", format: "date-time" },
+            details: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  field: { type: "string" },
+                  message: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+
+        // Health Response Schema
+        HealthResponse: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["ok"], example: "ok" },
+            timestamp: { type: "string", format: "date-time" },
+            environment: {
+              type: "string",
+              enum: ["development", "production"],
+              example: "development",
+            },
+            uptime: { type: "number", example: 123.45 },
+            version: { type: "string", example: "1.0.0" },
           },
         },
       },
+
       parameters: {
         runIdParam: {
           name: "runId",
           in: "path",
           required: true,
           schema: { type: "string" },
-          description: "Reconciliation run ID",
+          description: "Reconciliation run ID (format: rec_timestamp_uuid)",
           example: "rec_1700000000_abc123",
+        },
+        formatParam: {
+          name: "format",
+          in: "query",
+          schema: {
+            type: "string",
+            enum: ["json", "csv"],
+            default: "json",
+          },
+          description: "Response format",
+        },
+      },
+
+      responses: {
+        NotFound: {
+          description: "Resource not found",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
+        },
+        ValidationError: {
+          description: "Validation error",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
+        },
+        RateLimitError: {
+          description: "Rate limit exceeded",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
         },
       },
     },
+
     tags: [
       {
         name: "Reconciliation",

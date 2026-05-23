@@ -8,8 +8,12 @@
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
+    "clean": "rm -rf dist",
+    "prebuild": "npm run clean",
     "seed": "tsx src/scripts/seedDB.ts",
-    "test-ingestion": "tsx src/scripts/testIngestion.ts"
+    "test-ingestion": "tsx src/scripts/testIngestion.ts",
+    "deploy:check": "node scripts/deploy-check.js",
+    "postinstall": "npm run build"
   },
   "keywords": [],
   "author": "",
