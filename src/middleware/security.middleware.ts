@@ -1,12 +1,12 @@
 import { Request, Response, NextFunction } from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
-
+import mongoSanitize from "express-mongo-sanitize";
 import hpp from "hpp";
 import compression from "compression";
 import { logger } from "../utils/logger.js";
 
-// Helper function to get client IP (works with IPv4 and IPv6)
+// Helper function to get client IP
 const getClientIp = (req: Request): string => {
   const xForwardedFor = req.headers["x-forwarded-for"];
   if (xForwardedFor && typeof xForwardedFor === "string") {
@@ -15,9 +15,9 @@ const getClientIp = (req: Request): string => {
   return req.ip || req.socket.remoteAddress || "unknown";
 };
 
-// Rate limiting - Fixed IPv6 issue
+// Rate limiting
 export const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: 200,
   message: {
     error: "Too many requests",
@@ -25,18 +25,12 @@ export const limiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req: Request) => {
-    // Use the helper function for proper IP handling
-    return getClientIp(req);
-  },
-  skip: (req: Request) => {
-    return req.path === "/health";
-  },
+  keyGenerator: (req: Request) => getClientIp(req),
+  skip: (req: Request) => req.path === "/health",
 });
 
-// Stricter rate limit for reconciliation endpoint
 export const reconciliationLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
+  windowMs: 60 * 60 * 1000,
   max: 20,
   message: {
     error: "Too many reconciliation requests",
@@ -44,12 +38,10 @@ export const reconciliationLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req: Request) => {
-    return getClientIp(req);
-  },
+  keyGenerator: (req: Request) => getClientIp(req),
 });
 
-// Security headers with helmet
+// Security headers
 export const securityHeaders = helmet({
   contentSecurityPolicy: {
     directives: {
@@ -63,7 +55,7 @@ export const securityHeaders = helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
 });
 
-// Open CORS for public API
+// CORS options
 export const corsOptions = {
   origin: "*",
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -71,26 +63,28 @@ export const corsOptions = {
   exposedHeaders: ["Content-Disposition"],
   credentials: false,
   optionsSuccessStatus: 200,
-  preflightContinue: false,
-  maxAge: 86400,
 };
+
+// Compression middleware
+export const compress = compression({
+  level: 6,
+  threshold: 1024,
+});
+
+// Prevent MongoDB injection (fixed for Express 4)
+export const sanitizeInput = mongoSanitize({
+  replaceWith: "_",
+  onSanitize: ({ req, key }) => {
+    if (process.env.NODE_ENV === "development") {
+      logger.debug(`Sanitized input field: ${key}`);
+    }
+  },
+});
 
 // Prevent HTTP Parameter Pollution
 export const preventParameterPollution = hpp();
 
-// Compression for faster responses
-export const compress = compression({
-  level: 6,
-  threshold: 1024,
-  filter: (req, res) => {
-    if (req.headers["accept"] === "text/event-stream") {
-      return false;
-    }
-    return compression.filter(req, res);
-  },
-});
-
-// Request logging middleware
+// Request logging
 export const requestLogger = (
   req: Request,
   res: Response,
@@ -101,18 +95,15 @@ export const requestLogger = (
   res.on("finish", () => {
     const duration = Date.now() - start;
     const logLevel = res.statusCode >= 400 ? "warn" : "info";
-
     logger[logLevel](
-      `${req.method} ${req.path} - ${
-        res.statusCode
-      } - ${duration}ms - IP: ${getClientIp(req)}`
+      `${req.method} ${req.path} - ${res.statusCode} - ${duration}ms`
     );
   });
 
   next();
 };
 
-// Error handling middleware
+// Error handler
 export const errorHandler = (
   err: any,
   req: Request,
@@ -121,12 +112,10 @@ export const errorHandler = (
 ) => {
   logger.error("Error:", {
     message: err.message,
-    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
     path: req.path,
     method: req.method,
   });
 
-  // Mongoose validation error
   if (err.name === "ValidationError") {
     return res.status(400).json({
       error: "Validation Error",
@@ -135,20 +124,10 @@ export const errorHandler = (
     });
   }
 
-  // MongoDB duplicate key error
   if (err.code === 11000) {
     return res.status(409).json({
       error: "Duplicate Error",
       message: "A record with this identifier already exists",
-      timestamp: new Date().toISOString(),
-    });
-  }
-
-  // Rate limit error
-  if (err.name === "RateLimitError") {
-    return res.status(429).json({
-      error: "Rate Limit Exceeded",
-      message: "Too many requests, please try again later",
       timestamp: new Date().toISOString(),
     });
   }
@@ -168,7 +147,6 @@ export const errorHandler = (
 
 // 404 handler
 export const notFoundHandler = (req: Request, res: Response) => {
-  logger.warn(`404 - Route not found: ${req.method} ${req.path}`);
   res.status(404).json({
     error: "Not Found",
     message: `Cannot ${req.method} ${req.path}`,

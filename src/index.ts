@@ -24,18 +24,18 @@ dotenv.config();
 const app = express();
 
 // Security & Performance middleware (order matters!)
-app.use(compress); // Compress responses first
-app.use(securityHeaders); // Set security headers
-app.use(cors(corsOptions)); // Open CORS for public API
+app.use(compress);
+app.use(securityHeaders);
+app.use(cors(corsOptions));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-app.use(preventParameterPollution); // Prevent parameter pollution
-app.use(requestLogger); // Log all requests
-app.use(usageTracker); // Track API usage
+app.use(preventParameterPollution);
+app.use(requestLogger);
+app.use(usageTracker);
 
 // Apply rate limiting to all routes (except health)
 app.use("/api", limiter);
-app.use("/api/reconcile", reconciliationLimiter); // Stricter limit for expensive operation
+app.use("/api/reconcile", reconciliationLimiter);
 
 // Health check (no rate limiting, no auth)
 app.get("/health", (req, res) => {
@@ -87,11 +87,6 @@ const startServer = async () => {
       logger.info(`🌍 Environment: ${config.nodeEnv}`);
       logger.info(`🔓 CORS: Enabled for all origins (public API)`);
       logger.info(
-        `⏱️  Rate Limits: ${
-          config.reconciliation.defaultTimestampTolerance ? "Active" : "Active"
-        }`
-      );
-      logger.info(
         `🔄 Reconciliation defaults: ±${config.reconciliation.defaultTimestampTolerance}s, ±${config.reconciliation.defaultQuantityTolerance}%`
       );
     });
@@ -104,7 +99,6 @@ const startServer = async () => {
         process.exit(0);
       });
 
-      // Force close after 10 seconds
       setTimeout(() => {
         logger.error(
           "Could not close connections in time, forcefully shutting down"
