@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: reconciliation-engine
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false  # You'll set this manually in Render dashboard
+      - key: TIMESTAMP_TOLERANCE_SECONDS
+        value: 300
+      - key: QUANTITY_TOLERANCE_PCT
+        value: 0.01
